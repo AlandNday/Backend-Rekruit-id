@@ -10,17 +10,15 @@ FROM richarvey/nginx-php-fpm:latest AS build
 # This is where your Laravel application files will reside.
 WORKDIR /var/www/html
 
-# Copy all your Laravel application files into the container FIRST.
-# This ensures that 'artisan' and other necessary files are present
-# when 'composer install' runs its post-autoload-dump scripts.
+# Copy all your Laravel application files into the container.
+# This ensures that 'artisan' and other necessary files are present.
 # The .dockerignore file (if present) will exclude unnecessary files.
 COPY . .
 
-# --- DEBUGGING STEP ---
-# List contents and permissions of the working directory before composer install
-# This helps confirm if 'artisan' and other files are correctly copied.
-RUN ls -la /var/www/html
-# --- END DEBUGGING STEP ---
+# Create the .env file if it doesn't exist by copying .env.example.
+# This is essential because 'php artisan key:generate' needs a .env file to write to,
+# and .env is typically excluded from Git.
+RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
 # Install Composer dependencies.
 # --no-dev: Skips installing development dependencies, making the production image smaller.
@@ -28,9 +26,9 @@ RUN ls -la /var/www/html
 RUN composer install --no-dev --optimize-autoloader
 
 # Generate Laravel's application key.
-# This is crucial for security. If Railway injects APP_KEY as an environment variable,
+# This is crucial for security. The command will now find the .env file.
+# If Railway injects APP_KEY as an environment variable,
 # this value will be overwritten at runtime, which is the preferred method for production.
-# However, having a default here ensures the key exists for the build process.
 RUN php artisan key:generate
 
 # Optimize Laravel for production:
