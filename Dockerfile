@@ -10,18 +10,16 @@ FROM richarvey/nginx-php-fpm:latest AS build
 # This is where your Laravel application files will reside.
 WORKDIR /var/www/html
 
-# Copy only the composer files first to leverage Docker's caching.
-# If composer.json or composer.lock don't change, this layer is cached.
-COPY composer.json composer.lock ./
+# Copy all your Laravel application files into the container FIRST.
+# This ensures that 'artisan' and other necessary files are present
+# when 'composer install' runs its post-autoload-dump scripts.
+# The .dockerignore file (if present) will exclude unnecessary files.
+COPY . .
 
 # Install Composer dependencies.
 # --no-dev: Skips installing development dependencies, making the production image smaller.
 # --optimize-autoloader: Optimizes Laravel's class autoloader for better performance.
 RUN composer install --no-dev --optimize-autoloader
-
-# Copy the rest of your application code into the container.
-# The .dockerignore file (if present) will exclude unnecessary files.
-COPY . .
 
 # Generate Laravel's application key.
 # This is crucial for security. If Railway injects APP_KEY as an environment variable,
