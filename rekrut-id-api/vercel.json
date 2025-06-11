@@ -1,16 +1,29 @@
 {
-    "version": 2,
-    "framework": null,
-    "public": true,
-    "buildCommand": "vite build",
-    "outputDirectory": "public",
-    "env": {
-        "APP_DEBUG": "false",
-        "SESSION_DRIVER": "cookie",
-        "DB_CONNECTION": "mysql",
-        "DB_HOST": "127.0.0.1",
-        "DB_PORT": "3306",
-        "DB_DATABASE": "Laravel",
-        "DB_USERNAME": "root"
+  "version": 2,
+  "builds": [
+    {
+      "src": "public/index.php", 
+      "use": "@vercel/php" 
     }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)", 
+      "dest": "public/index.php" 
+    }
+  ],
+  "env": {
+
+    "APP_ENV": "production",
+    "APP_DEBUG": "0",
+    "APP_KEY": "base64:3Wub031+dAMIuvnqTp2cGkj3GeaLQig+anxjkrncTOY=", 
+    "APP_URL": "https://Rekruitid.vercel.app", 
+
+    "DB_CONNECTION": "mysql", 
+    "DB_HOST": "your_db_host",
+    "DB_PORT": "3306",
+    "DB_DATABASE": "Laravel",
+    "DB_USERNAME": "root",
+    "DB_PASSWORD": ""
+  }
 }
