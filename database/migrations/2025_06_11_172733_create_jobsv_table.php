@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Query\Expression; // <-- ADD THIS LINE
 
 return new class extends Migration
 {
@@ -21,7 +22,8 @@ return new class extends Migration
             $table->string('job_type');
             $table->string('category')->default('Other');
             $table->string('experience_level')->default('Entry Level');
-            $table->json('tags')->default('[]'); // Store tags as JSON
+            // FIX: Use an SQL expression for the default JSON array
+            $table->json('tags')->default(new Expression('(JSON_ARRAY())')); // Store tags as JSON
             $table->string('company_initial')->nullable();
             $table->timestamps(); // created_at and updated_at
         });
