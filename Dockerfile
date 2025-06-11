@@ -15,22 +15,26 @@ WORKDIR /var/www/html
 # The .dockerignore file (if present) will exclude unnecessary files.
 COPY . .
 
-# Create the .env file if it doesn't exist by copying .env.example.
-# This is essential because 'php artisan key:generate' needs a .env file to write to,
-# and .env is typically excluded from Git.
-RUN if [ ! -f .env ]; then cp .env.example .env; fi
+# IMPORTANT: We no longer copy .env.example to .env here.
+# Laravel's key generation and configuration caching should happen
+# at runtime on Railway, where actual environment variables are injected.
 
-# --- DEBUGGING STEP: Check files after copy but before composer install ---
+# --- DEBUGGING STEP: Check files after copy but before Composer operations ---
 RUN echo "--- Files in /var/www/html before Composer operations ---"
 RUN ls -la /var/www/html
 # --- END DEBUGGING STEP ---
 
-# Set COMPOSER_ALLOW_SUPERUSER for non-interactive sessions if running as root (common in Docker)
+# Set Composer environment variables for non-interactive sessions and to disable plugins.
+# COMPOSER_ALLOW_SUPERUSER=1: Allows Composer to run as root (common in Docker environments).
+# COMPOSER_NO_PLUGINS=1: Crucial to explicitly disable all Composer plugins, bypassing hirak/prestissimo.
+# COMPOSER_MEMORY_LIMIT=-1: Prevents Composer from running out of memory.
 ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_NO_PLUGINS=1
+ENV COMPOSER_MEMORY_LIMIT=-1
 
 # --- AGGRESSIVE COMPOSER CLEANUP AND INSTALL ---
-# Explicitly remove hirak/prestissimo if it somehow got included or cached.
-# --no-update prevents it from trying to update other packages.
+# Explicitly attempt to remove hirak/prestissimo first, in case it's lingering.
+# The '|| true' makes the command not fail the build if the package isn't found.
 RUN composer remove hirak/prestissimo --no-update --ignore-platform-reqs || true
 
 # Clear Composer's cache to ensure a fresh state.
@@ -39,37 +43,19 @@ RUN composer clear-cache
 # Install Composer dependencies.
 # --no-dev: Skips installing development dependencies, making the production image smaller.
 # --optimize-autoloader: Optimizes Laravel's class autoloader for better performance.
-# --no-plugins: Disable all Composer plugins during install to avoid conflicts like prestissimo.
 # --ignore-platform-reqs: Ignore platform requirements (like PHP version) that might conflict
 #                         with the base image, allowing the installation to proceed.
-RUN composer install --no-dev --optimize-autoloader --no-plugins --ignore-platform-reqs
+# Note: COMPOSER_NO_PLUGINS environment variable handles disabling plugins for this run.
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
 
 # --- DEBUGGING STEP: Check files after Composer install ---
 RUN echo "--- Files in /var/www/html after Composer install ---"
 RUN ls -la /var/www/html
 # --- END DEBUGGING STEP ---
 
-# Generate Laravel's application key.
-# This is crucial for security. The command will now find the .env file.
-# If Railway injects APP_KEY as an environment variable,
-# this value will be overwritten at runtime, which is the preferred method for production.
-RUN php artisan key:generate
-
-# Optimize Laravel for production:
-# config:cache: Caches configuration files for faster loading.
-# route:cache: Caches routes for faster routing (especially useful for many routes).
-# view:cache: Caches compiled Blade views.
-# These commands should be run after all code is copied.
-RUN php artisan config:cache
-RUN php artisan route:cache
-RUN php artisan view:cache
-RUN php artisan migrate:fresh --seed
-
-# If you use storage symlinks (e.g., for user-uploaded files) in your public directory,
-# you'll need to create the symbolic link.
-# Note: For persistent storage, you'd typically use a volume, not rely on this for uploaded files.
-# This command ensures the symlink exists within the container.
-RUN php artisan storage:link
+# We remove 'php artisan key:generate' and all 'php artisan config:cache', 'route:cache', etc.
+# from the Dockerfile. These operations will now be handled directly on Railway
+# as part of the deploy commands, ensuring environment variables are loaded.
 
 # Set proper permissions for Laravel's storage and bootstrap/cache directories.
 # 'www-data' is the typical user for Nginx/PHP-FPM processes in many Docker images.
@@ -77,17 +63,21 @@ RUN php artisan storage:link
 RUN chown -R www-data:www-data storage bootstrap/cache
 RUN chmod -R 775 storage bootstrap/cache
 
-# Stage 2: Production Stage (Optional, but good for smaller final images)
-# This stage uses the same base image but only copies the necessary built artifacts
-# from the 'build' stage. This often results in a smaller final image.
+# We no longer run php artisan storage:link here. This will be done in the deploy command.
+
+
+# Stage 2: Production Stage
 FROM richarvey/nginx-php-fpm:latest
 
 # Set the working directory for the final image.
 WORKDIR /var/www/html
 
 # Copy the built application from the 'build' stage.
-# This includes all your code, vendor dependencies, and cached Laravel files.
+# This includes all your code and vendor dependencies.
 COPY --from=build /var/www/html .
+
+# Explicitly ensure Laravel logs to stderr for Railway visibility.
+ENV LOG_CHANNEL=stderr
 
 # Explicitly set the command to start Nginx and PHP-FPM.
 # This overrides any default CMD/ENTRYPOINT that Railway might implicitly run
@@ -96,7 +86,5 @@ COPY --from=build /var/www/html .
 CMD ["/start.sh"]
 
 # Important:
-# Remember to set your environment variables on Railway for database connection (DB_HOST, DB_DATABASE, etc.)
-# and APP_KEY. These will override any values set during the Dockerfile build process.
-# You will also need to run 'php artisan migrate --force' on Railway either via CLI
-# or a "Deploy Command" after the service starts and connects to the database.
+# REMINDER: The following steps are CRITICAL and must be done directly on Railway.
+# They are no longer in the Dockerfile because they rely on runtime environment variables.
