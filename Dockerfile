@@ -16,6 +16,12 @@ WORKDIR /var/www/html
 # The .dockerignore file (if present) will exclude unnecessary files.
 COPY . .
 
+# --- DEBUGGING STEP ---
+# List contents and permissions of the working directory before composer install
+# This helps confirm if 'artisan' and other files are correctly copied.
+RUN ls -la /var/www/html
+# --- END DEBUGGING STEP ---
+
 # Install Composer dependencies.
 # --no-dev: Skips installing development dependencies, making the production image smaller.
 # --optimize-autoloader: Optimizes Laravel's class autoloader for better performance.
