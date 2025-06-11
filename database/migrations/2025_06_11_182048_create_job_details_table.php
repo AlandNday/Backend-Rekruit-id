@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Query\Expression; // <-- ADD THIS LINE
 
 return new class extends Migration
 {
@@ -16,8 +17,10 @@ return new class extends Migration
             $table->string('job_id')->primary(); // Make job_id the primary key
 
             $table->text('description');
-            $table->json('key_responsibilities')->default('[]'); // Store as JSON array
-            $table->json('professional_skills')->default('[]'); // Store as JSON array
+            // FIX: Use an SQL expression for the default JSON array
+            $table->json('key_responsibilities')->default(new Expression('(JSON_ARRAY())')); // Store as JSON array
+            // FIX: Use an SQL expression for the default JSON array
+            $table->json('professional_skills')->default(new Expression('(JSON_ARRAY())')); // Store as JSON array
 
             $table->timestamps();
 
