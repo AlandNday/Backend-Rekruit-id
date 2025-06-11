@@ -20,10 +20,23 @@ COPY . .
 # and .env is typically excluded from Git.
 RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
+# --- DEBUGGING STEP: Check files after copy but before composer install ---
+RUN echo "--- Files in /var/www/html before Composer install ---"
+RUN ls -la /var/www/html
+# --- END DEBUGGING STEP ---
+
+# Set COMPOSER_ALLOW_SUPERUSER for non-interactive sessions if running as root (common in Docker)
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
 # Install Composer dependencies.
 # --no-dev: Skips installing development dependencies, making the production image smaller.
 # --optimize-autoloader: Optimizes Laravel's class autoloader for better performance.
 RUN composer install --no-dev --optimize-autoloader
+
+# --- DEBUGGING STEP: Check files after Composer install ---
+RUN echo "--- Files in /var/www/html after Composer install ---"
+RUN ls -la /var/www/html
+# --- END DEBUGGING STEP ---
 
 # Generate Laravel's application key.
 # This is crucial for security. The command will now find the .env file.
@@ -64,10 +77,11 @@ WORKDIR /var/www/html
 # This includes all your code, vendor dependencies, and cached Laravel files.
 COPY --from=build /var/www/html .
 
-# Railway automatically handles port exposure based on the base image (80, 443).
-# The richarvey/nginx-php-fpm image already has a CMD defined to start Nginx and PHP-FPM.
-# You typically don't need to define CMD here unless you want to override it.
-# The default CMD in richarvey/nginx-php-fpm runs '/start.sh' which sets up Nginx and PHP-FPM.
+# Explicitly set the command to start Nginx and PHP-FPM.
+# This overrides any default CMD/ENTRYPOINT that Railway might implicitly run
+# based on its buildpacks, forcing it to use your Dockerfile's definition.
+# The richarvey/nginx-php-fpm image expects '/start.sh' to be run.
+CMD ["/start.sh"]
 
 # Important:
 # Remember to set your environment variables on Railway for database connection (DB_HOST, DB_DATABASE, etc.)
