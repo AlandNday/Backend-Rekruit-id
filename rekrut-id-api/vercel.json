@@ -1,0 +1,23 @@
+{
+    "version": 2,
+    "framework": null,
+    "functions": {
+        "routes/api.php": { "runtime": "vercel-php@0.6.0" }
+    },
+    "routes": [
+        { "src": "/build/(.*)", "dest": "/public/build/" },
+        { "src": "/(.*)", "dest": "/routes/api.php" }
+    ],
+    "public": true,
+    "buildCommand": "vite build",
+    "outputDirectory": "public",
+    "env": {
+        "APP_DEBUG": "false",
+        "SESSION_DRIVER": "cookie",
+        "DB_CONNECTION": "mysql",
+        "DB_HOST": "127.0.0.1",
+        "DB_PORT": "3306",
+        "DB_DATABASE": "Laravel",
+        "DB_USERNAME": "root"
+    }
+}
