@@ -2,47 +2,49 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+// IMPORTANT: Ensure 'use Laravel\Sanctum\HasApiTokens;' is REMOVED if it was there.
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    // IMPORTANT: Ensure 'HasApiTokens' is REMOVED from this 'use' statement.
+    // It should now look like this:
     use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
+        'api_token', // <-- IMPORTANT: Add this line to allow mass assignment of api_token
     ];
 
     /**
      * The attributes that should be hidden for serialization.
+     * These attributes are hidden when the model is converted to an array or JSON.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
         'remember_token',
+        'api_token', // <-- IMPORTANT: Hide the api_token from public JSON responses by default
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
-     * @return array<string, string>
+     * @var array<string, string>
      */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed', // For Laravel 10+, this correctly hashes passwords on assignment
+    ];
 }
